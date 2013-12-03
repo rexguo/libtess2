@@ -44,6 +44,12 @@
 #define TRUE 1
 #define FALSE 0
 
+#ifdef DEBUG
+  #define _FAIL { printf("FAIL %s %s %d\n", __FILE__, __FUNCTION__, __LINE__); }
+#else
+  #define _FAIL
+#endif
+
 #define Dot(u,v)	(u[0]*v[0] + u[1]*v[1] + u[2]*v[2])
 
 static void Normalize( TESSreal v[3] )
@@ -334,7 +340,7 @@ int tessMeshTessellateMonoRegion( TESSmesh *mesh, TESSface *face )
 			while( lo->Lnext != up && (EdgeGoesLeft( lo->Lnext )
 				|| EdgeSign( lo->Org, lo->Dst, lo->Lnext->Dst ) <= 0 )) {
 					TESShalfEdge *tempHalfEdge= tessMeshConnect( mesh, lo->Lnext, lo );
-					if (tempHalfEdge == NULL) return 0;
+					if (tempHalfEdge == NULL) { _FAIL; return 0; }
 					lo = tempHalfEdge->Sym;
 			}
 			lo = lo->Lprev;
@@ -343,7 +349,7 @@ int tessMeshTessellateMonoRegion( TESSmesh *mesh, TESSface *face )
 			while( lo->Lnext != up && (EdgeGoesRight( up->Lprev )
 				|| EdgeSign( up->Dst, up->Org, up->Lprev->Org ) >= 0 )) {
 					TESShalfEdge *tempHalfEdge= tessMeshConnect( mesh, up, up->Lprev );
-					if (tempHalfEdge == NULL) return 0;
+					if (tempHalfEdge == NULL) { _FAIL; return 0; }
 					up = tempHalfEdge->Sym;
 			}
 			up = up->Lnext;
@@ -356,7 +362,7 @@ int tessMeshTessellateMonoRegion( TESSmesh *mesh, TESSface *face )
 	assert( lo->Lnext != up );
 	while( lo->Lnext->Lnext != up ) {
 		TESShalfEdge *tempHalfEdge= tessMeshConnect( mesh, lo->Lnext, lo );
-		if (tempHalfEdge == NULL) return 0;
+		if (tempHalfEdge == NULL) { _FAIL; return 0; }
 		lo = tempHalfEdge->Sym;
 	}
 
@@ -886,13 +892,16 @@ int tessTesselate( TESStesselator *tess, int windingRule, int elementType,
 	if (vertexSize > 3)
 		vertexSize = 3;
 
-	if (setjmp(tess->env) != 0) { 
+	if (setjmp(tess->env) != 0)
+	{
+        _FAIL;
 		/* come back here if out of memory */
 		return 0;
 	}
 
 	if (!tess->mesh)
 	{
+	    _FAIL;
 		return 0;
 	}
 
@@ -907,8 +916,10 @@ int tessTesselate( TESStesselator *tess, int windingRule, int elementType,
 	* to the polygon, according to the rule given by tess->windingRule.
 	* Each interior region is guaranteed be monotone.
 	*/
-	if ( !tessComputeInterior( tess ) ) {
-		longjmp(tess->env,1);  /* could've used a label */
+	if ( !tessComputeInterior( tess ) )
+	{
+        _FAIL;
+        longjmp(tess->env,1);  /* could've used a label */
 	}
 
 	mesh = tess->mesh;
@@ -922,7 +933,11 @@ int tessTesselate( TESStesselator *tess, int windingRule, int elementType,
 	} else {
 		rc = tessMeshTessellateInterior( mesh ); 
 	}
-	if (rc == 0) longjmp(tess->env,1);  /* could've used a label */
+	if (rc == 0)
+	{
+        _FAIL;
+	    longjmp(tess->env,1);  /* could've used a label */
+	}
 
 	tessMeshCheckMesh( mesh );
 
@@ -938,7 +953,11 @@ int tessTesselate( TESStesselator *tess, int windingRule, int elementType,
 	tess->mesh = NULL;
 
 	if (tess->outOfMemory)
+	{
+        _FAIL;
 		return 0;
+	}
+
 	return 1;
 }
 
